@@ -12,6 +12,9 @@ public class Main {
         int myPort = Integer.parseInt(args[1]);
         int myId = 0;
 
+        boolean isCoordinator = false;
+        int coordinatorPort = 0;
+
         ArrayList<Node> nodeList = new ArrayList<Node>();
 
         File file = new File("config.txt");
@@ -35,37 +38,104 @@ public class Main {
             nodeList.add(node);
         }
 
+        if (myId == 7)
+            isCoordinator = true;
+        coordinatorPort = 4000;
+
+
+
         br.close();
 
         // Send messages
         while (true) {
 
-            for (Node node : nodeList) {
-                // Send HI message
+            //1 Node is coordinator and only responds
+            if (isCoordinator){
+                //System.out.println("Hey Im coordinator!");
+                try {
+                    // obtem a resposta
+                    DatagramPacket pacoteRecebido = new DatagramPacket(text, text.length);
+                    socket.setSoTimeout(500);
+                    socket.receive(pacoteRecebido);
+    
+                    // mostra a resposta
+                    String resposta = new String(pacoteRecebido.getData(), 0, pacoteRecebido.getLength());
+                    System.out.println(resposta);
+
+                    String answerText = "Coordinator here!";
+                    text = answerText.getBytes();
+                    InetAddress senderAddress = pacoteRecebido.getAddress();
+                    int senderPort = pacoteRecebido.getPort();
+
+                    DatagramPacket pacote = new DatagramPacket(text, text.length, senderAddress, senderPort);
+                    socket.send(pacote);
+
+    
+                } catch (IOException e) {
+                    System.out.print(".");
+                    //socket.close();
+                }
+
+            } 
+            
+            else {
+                 //2 Node is not coordinator and sends hello to coordinator
                 String helloFromMessage = "Hello from " + myId;
                 text = helloFromMessage.getBytes();
-                InetAddress address = InetAddress.getByName(node.address);
-                packtBytes = node.address.getBytes();
-                DatagramPacket pacote = new DatagramPacket(text, text.length, address, node.port);
-                // //InetSocketAddress address = new InetSocketAddress("127.0.0.1", 4500);
+                InetAddress address = InetAddress.getByName("localhost");
+                DatagramPacket pacote = new DatagramPacket(text, text.length, address, coordinatorPort);
                 socket.send(pacote);
+
+                try{
+                    //2.1 Coordinator responde
+                    // obtem a resposta
+                    text = new byte[256];
+				    pacote = new DatagramPacket(text, text.length);
+				    socket.setSoTimeout(500);
+				    socket.receive(pacote);
+
+				    // mostra a resposta
+				    String resposta = new String(pacote.getData(), 0, pacote.getLength());
+                    System.out.println(resposta);
+                    Thread.currentThread().sleep(2000);
+
+                
+                } 
+                //2.2 Coordinator does not respond
+                catch (IOException e) {
+                    System.out.print("Coordenador caiu???");
+			    } catch (InterruptedException e){
+                    socket.close();
+                }
+
             }
 
-            try {
-				// obtem a resposta
-				DatagramPacket pacote = new DatagramPacket(text, text.length);
-				socket.setSoTimeout(500);
-				socket.receive(pacote);
 
-				// mostra a resposta
-				String resposta = new String(pacote.getData(), 0, pacote.getLength());
-                System.out.println(resposta);
-                Thread.currentThread().sleep(2000);
+            // for (Node node : nodeList) {
+            //     // Send HI message
+            //     String helloFromMessage = "Hello from " + myId;
+            //     text = helloFromMessage.getBytes();
+            //     InetAddress address = InetAddress.getByName(node.address);
+            //     DatagramPacket pacote = new DatagramPacket(text, text.length, address, node.port);
+            //     // //InetSocketAddress address = new InetSocketAddress("127.0.0.1", 4500);
+            //     socket.send(pacote);
+            // }
 
-			} catch (InterruptedException e) {
-                //System.out.print(".");
-                socket.close();
-			}
+            // try {
+			// 	// obtem a resposta
+			// 	DatagramPacket pacote = new DatagramPacket(text, text.length);
+			// 	socket.setSoTimeout(500);
+			// 	socket.receive(pacote);
+
+			// 	// mostra a resposta
+			// 	String resposta = new String(pacote.getData(), 0, pacote.getLength());
+            //     System.out.println(resposta);
+            //     Thread.currentThread().sleep(2000);
+
+			// } catch (InterruptedException e) {
+            //     //System.out.print(".");
+            //     socket.close();
+			// }
         }
     }
 }
