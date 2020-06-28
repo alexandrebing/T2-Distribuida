@@ -1,7 +1,7 @@
-1 localhost 3000
-2 localhost 4200
-3 localhost 8080
-4 localhost 3550
-5 localhost 8000
-6 localhost 6050
-7 localhost 4000
+1 localhost 1000
+2 localhost 2000
+3 localhost 3000
+4 localhost 4000
+5 localhost 5000
+6 localhost 6000
+7 localhost 7000
