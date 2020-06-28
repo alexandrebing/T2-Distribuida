@@ -9,4 +9,8 @@ public class Node {
         this.port = port;
         this.address = address;
     }
+
+    public void setCoordinator(boolean isCoordinator){
+        this.coordinator = !this.coordinator;
+    }
 }
