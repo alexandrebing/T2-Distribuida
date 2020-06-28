@@ -3,15 +3,18 @@ import java.io.*;
 import java.net.*;
 
 public class Main {
+    static long start = System.currentTimeMillis();
+    static long end = start + 25 * 1000; // 25 seconds * 1000 ms/sec
 
     static boolean isCoordinator = false;
-
+    static boolean resetTimer = false;
     public static void setCoordinator(boolean isCoordinatorr){
         isCoordinator = isCoordinatorr;
     }
     public static boolean getCoordinator(){
         return isCoordinator;
     }
+    
 
     public static void main(String[] args) throws FileNotFoundException, IOException {
 
@@ -61,7 +64,7 @@ public class Main {
                 n.coordinator = true;
             }
             System.out.println("sou o coordenador - " + maiorID);
-
+            resetTimer = false;
             setCoordinator(true);
         }
 
@@ -73,7 +76,11 @@ public class Main {
             // 1 Node is coordinator and only responds
             // condicao com que faz que o coordenador continue conectado por x tempo
             if (getCoordinator()) {
-
+                if (resetTimer){
+                    start = System.currentTimeMillis();
+                    end = start + 25 * 1000; // 25 seconds * 1000 ms/sec
+                    resetTimer = false;
+                }
                 while (System.currentTimeMillis() < end) {
                     try {
                         // obtem a resposta
@@ -213,8 +220,6 @@ public class Main {
         byte[] text = new byte[256];
         System.out.println(myId + "----");
         int maiorIDEleicao = 0;
-        long start = System.currentTimeMillis();
-        long end = start + 5 * 1000; // 25 seconds * 1000 ms/sec
         for (Node node : nodeList) {
             // Send HI message
             if (node.ID > myId) {
@@ -232,29 +237,6 @@ public class Main {
             }
 
         }//end for
-        if (myId == maiorIDEleicao) {
-            // enviar msg para todos
-            for (Node node : nodeList) {
-                if (node.ID == myId){
-                    if (myId > node.ID){
-                        node.coordinator = true;
-                        setCoordinator(true);
-                        
-                        text = new byte [256];
-                        String helloFromMessage = "Eu sou o coordenador";
-                        text = helloFromMessage.getBytes();
-                        InetAddress address = InetAddress.getByName("localhost");
-                        DatagramPacket pacote = new DatagramPacket(text, text.length, address, node.port);
-                        socket.send(pacote);
-                    }
-                   
-
-                }
-            }
-            coordinatorOnline = true;
-            return;
-            
-        }
         while (System.currentTimeMillis() < end) {
         try {
             // obtem a resposta
@@ -282,6 +264,7 @@ public class Main {
         }
     }
     setCoordinator(true);
+    resetTimer = true;
     }
 
 }
