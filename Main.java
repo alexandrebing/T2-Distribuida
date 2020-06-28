@@ -28,7 +28,6 @@ public class Main {
 
         int myId = 0;
         int coordinatorPort = 0;
-        // boolean isCoordinator = false;
         boolean coordinatorOnline = false;
         boolean electionStarted = false;
 
@@ -194,7 +193,7 @@ public class Main {
                 if (node.ID > maiorIDEleicao) {
                     maiorIDEleicao = node.ID;
                 }
-                sendMessage("sou o novo coordenador", InetAddress.getByName("localhost"), node.port);
+                sendMessage("sou o novo coordenador:" + myId, InetAddress.getByName("localhost"), node.port);
                 System.out.println(myId + ": enviei mensagem para " + node.ID);
             }
 
@@ -203,12 +202,13 @@ public class Main {
         try {
             // obtem a resposta
             DatagramPacket message = receiveMessage();
-
+            int msg = 0;
             // mostra a resposta
             String resposta = new String(message.getData(), 0, message.getLength());
-            System.out.println(resposta + "recebendo resposta");
-            if (resposta.contains("Eu sou o coordenador")){
-                System.out.println("identificado novo coordenador");
+            msg = Integer.parseInt(resposta.split(":")[1]);
+            System.out.println(resposta + "\nrrecebendo resposta");
+            if (msg > myId){
+                System.out.println("existem alguem maior que eu");
                 return;
             }
             Thread.currentThread();
@@ -216,13 +216,12 @@ public class Main {
 
 
         } catch (IOException e) {
-        
             System.out.println("esperando resposta de alguem");
 
         } catch (InterruptedException e) {
             socket.close();
         }
-    }
+    }//fim while
     setCoordinator(true);
     resetTimer = true;
     }
