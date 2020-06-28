@@ -4,6 +4,8 @@ import java.net.*;
 
 public class Main {
 
+    static DatagramSocket socket;
+
     public static void main(String[] args) throws FileNotFoundException, IOException {
 
         if (args.length != 2) {
@@ -29,7 +31,7 @@ public class Main {
         // recebe a porta passada por parametro java localhost 3000
         int myPort = Integer.parseInt(args[1]);
         // cria um socket datagrama
-        DatagramSocket socket = new DatagramSocket(myPort);
+        socket = new DatagramSocket(myPort);
 
         // Setup list of nodes accoriding to config.txt
         while ((aux = br.readLine()) != null) {
@@ -65,30 +67,15 @@ public class Main {
                 while (System.currentTimeMillis() < end) {
                     try {
                         // obtem a resposta
-                        text = new byte [256];
-                        DatagramPacket pacoteRecebido = new DatagramPacket(text, text.length);
-                        socket.setSoTimeout(500);
-                        socket.receive(pacoteRecebido);
+                        DatagramPacket message = receiveMessage();
 
                         // mostra a resposta
-                        String resposta = new String(pacoteRecebido.getData(), 0, pacoteRecebido.getLength());
+                        String resposta = new String(message.getData(), 0, message.getLength());
                         System.out.println(resposta);
                         if (resposta.equals("Coordenador online?")) {
-                            String answerText = "Eu sou o coordenador";
-                            text = answerText.getBytes();
-                            InetAddress senderAddress = pacoteRecebido.getAddress();
-                            int senderPort = pacoteRecebido.getPort();
-
-                            DatagramPacket pacote = new DatagramPacket(text, text.length, senderAddress, senderPort);
-                            socket.send(pacote);
+                            sendMessage("Eu sou o coordenador", message.getAddress(), message.getPort());
                         } else {
-                            String answerText = "*Coordinator aqui - myId: " + myId;
-                            text = answerText.getBytes();
-                            InetAddress senderAddress = pacoteRecebido.getAddress();
-                            int senderPort = pacoteRecebido.getPort();
-
-                            DatagramPacket pacote = new DatagramPacket(text, text.length, senderAddress, senderPort);
-                            socket.send(pacote);
+                            sendMessage("*Coordinator aqui - myId: " + myId, message.getAddress(), message.getPort());
                         }
 
                     } catch (IOException e) {
@@ -108,85 +95,57 @@ public class Main {
                 // Um coordenador é conhecido
                 if (coordinatorOnline) {
                     // 2 Node is not coordinator and sends hello to coordinator
-                    text = new byte [256];
-                    String helloFromMessage = "\nOla coord sou o id -  " + myId;
-                    text = helloFromMessage.getBytes();
-                    InetAddress address = InetAddress.getByName("localhost");
-                    DatagramPacket pacote = new DatagramPacket(text, text.length, address, coordinatorPort);
-                    socket.send(pacote);
+                    sendMessage("\nOla coord sou o id -  " + myId, InetAddress.getByName("localhost"), coordinatorPort);
 
                     try {
                         // 2.1 Coordinator responde
                         // obtem a resposta
-                        text = new byte[256];
-                        pacote = new DatagramPacket(text, text.length);
-                        socket.setSoTimeout(500);
-                        socket.receive(pacote);
+                        DatagramPacket message = receiveMessage();
 
                         // mostra a resposta
-                        String resposta = new String(pacote.getData(), 0, pacote.getLength());
+                        String resposta = new String(message.getData(), 0, message.getLength());
                         System.out.println(resposta);
-                        Thread.currentThread();
-                        Thread.sleep(2000);
-
                     }
                     // 2.2 Coordinator does not respond
                     catch (IOException e) {
                         System.out.println("coordenador caiu, iniciando nova eleicao");
                         // nao consegui mandar para o coordenador
                         Election(nodeList, socket, myId, isCoordinator);
-                    } catch (InterruptedException e) {
-
-                        socket.close();
                     }
                     // COOORDENADOR NÃO É CONHECIDO
                 } else {
 
-                    //Pergunta se tem um coordenador
-                    if (! electionStarted){
-                        String helloCoordinator = "Coordenador online?";
-                        text = helloCoordinator.getBytes();
-                        InetAddress address = InetAddress.getByName("localhost");
+                    // Pergunta se tem um coordenador
+                    if (!electionStarted) {
+                        
                         for (Node node : nodeList) {
-                            if (node.port != myPort){
-                                DatagramPacket pacote = new DatagramPacket(text, text.length, address, node.port);
-                                socket.send(pacote);
+                            if (node.port != myPort) {
+                                sendMessage("Coordenador online?", InetAddress.getByName("localhost"), node.port);
                             }
-                           
+
                         }
                     }
 
                     try {
                         // Recebe mensagem
-                        text = new byte[256];
-                        DatagramPacket pacote = new DatagramPacket(text, text.length);
-                        socket.setSoTimeout(500);
-                        socket.receive(pacote);
-                        String resposta = new String(pacote.getData(), 0, pacote.getLength());
+                        DatagramPacket message = receiveMessage();
+                        String resposta = new String(message.getData(), 0, message.getLength());
                         System.out.println(resposta);
-                        //verifica se a  mensagem é do coordenador
-                        if (resposta.equals("Eu sou o coordenador")){
+                        // verifica se a mensagem é do coordenador
+                        if (resposta.equals("Eu sou o coordenador")) {
                             for (Node node : nodeList) {
-                                if(node.port == pacote.getPort()){
+                                if (node.port == message.getPort()) {
                                     coordinatorPort = node.port;
                                     coordinatorOnline = true;
                                 }
-                                
+
                             }
                         }
-
-                        // mostra a resposta
-
-                        Thread.currentThread();
-                        Thread.sleep(2000);
 
                     }
                     // 2.2 Coordinator does not respond
                     catch (IOException e) {
                         System.out.print(".");
-                    } catch (InterruptedException e) {
-
-                        socket.close();
                     }
 
                 }
@@ -195,6 +154,8 @@ public class Main {
 
         }
     }
+
+
 
     static void Election(ArrayList<Node> nodeList, DatagramSocket socket, int myId, boolean isCoordinator)
             throws IOException {
@@ -249,6 +210,33 @@ public class Main {
         } catch (InterruptedException e) {
             socket.close();
         }
+
+    }
+
+    static void sendMessage(String message, InetAddress address, int port) throws IOException {
+        String answerText = message;
+        byte[] text = new byte[256];
+        text = answerText.getBytes();
+        InetAddress senderAddress;
+        senderAddress = address;
+        int senderPort = port;
+
+        DatagramPacket pacote = new DatagramPacket(text, text.length, senderAddress, senderPort);
+
+        socket.send(pacote);
+    }
+
+    static DatagramPacket receiveMessage() throws IOException {
+        byte[] text = new byte[256];
+        DatagramPacket pacote = new DatagramPacket(text, text.length);
+        try {
+            socket.setSoTimeout(500);
+        } catch (SocketException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        socket.receive(pacote);
+        return pacote;
 
     }
 
