@@ -8,6 +8,7 @@ public class Main {
 
     static boolean isCoordinator = false;
     static boolean resetTimer = false;
+    static boolean electionStarted = false;
 
     public static void setCoordinator(boolean isCoordinatorr) {
         isCoordinator = isCoordinatorr;
@@ -29,7 +30,7 @@ public class Main {
         int myId = 0;
         int coordinatorPort = 0;
         boolean coordinatorOnline = false;
-        boolean electionStarted = false;
+        electionStarted = false;
 
         ArrayList<Node> nodeList = new ArrayList<Node>();
         File file = new File("config.txt");
@@ -93,7 +94,7 @@ public class Main {
                         if (resposta.equals("Coordenador online?")) {
                             sendMessage("Eu sou o coordenador", message.getAddress(), message.getPort());
                         } else {
-                            sendMessage("*Coordinator aqui - myId: " + myId, message.getAddress(), message.getPort());
+                            sendMessage("*Coordinator aqui - myId:" + myId, message.getAddress(), message.getPort());
                         }
 
                     } catch (IOException e) {
@@ -128,6 +129,7 @@ public class Main {
                     catch (IOException e) {
                         System.out.println("coordenador caiu, iniciando nova eleicao");
                         // nao consegui mandar para o coordenador
+                        resetTimer = true;
                         Election(nodeList, socket, myId, isCoordinator);
                     }
 
@@ -143,13 +145,15 @@ public class Main {
 
                     // Pergunta se tem um coordenador
                     if (!electionStarted) {
-                        
+
                         for (Node node : nodeList) {
                             if (node.port != myPort) {
                                 sendMessage("Coordenador online?", InetAddress.getByName("localhost"), node.port);
                             }
 
                         }
+                    } else {
+                        Election(nodeList, socket, myId, isCoordinator);
                     }
 
                     try {
@@ -166,6 +170,8 @@ public class Main {
                                 }
 
                             }
+                        } else if (resposta.equals("Eleição começou:0")){
+                            electionStarted = true;
                         }
 
                     }
@@ -181,49 +187,58 @@ public class Main {
         }
     }
 
-
-
     static void Election(ArrayList<Node> nodeList, DatagramSocket socket, int myId, boolean isCoordinator)
             throws IOException {
         System.out.println(myId + "----");
         int maiorIDEleicao = 0;
         for (Node node : nodeList) {
             // Send HI message
+            sendMessage("Eleição começou:0", InetAddress.getByName(node.address), node.port);
             if (node.ID > myId) {
                 if (node.ID > maiorIDEleicao) {
                     maiorIDEleicao = node.ID;
                 }
-                sendMessage("sou o novo coordenador:" + myId, InetAddress.getByName("localhost"), node.port);
+                sendMessage("Quero ser coordenador:" + myId, InetAddress.getByName("localhost"), node.port);
                 System.out.println(myId + ": enviei mensagem para " + node.ID);
             }
 
-        }//end for
-        while (System.currentTimeMillis() < end) {
-        try {
-            // obtem a resposta
-            DatagramPacket message = receiveMessage();
-            int msg = 0;
-            // mostra a resposta
-            String resposta = new String(message.getData(), 0, message.getLength());
-            msg = Integer.parseInt(resposta.split(":")[1]);
-            System.out.println(resposta + "\nrrecebendo resposta");
-            if (msg > myId){
-                System.out.println("existem alguem maior que eu");
-                return;
-            }
-            Thread.currentThread();
-            Thread.sleep(2000);
-
-
-        } catch (IOException e) {
-            System.out.println("esperando resposta de alguem");
-
-        } catch (InterruptedException e) {
-            socket.close();
+        } // end for
+        if (resetTimer) {
+            start = System.currentTimeMillis();
+            end = start + 5 * 1000; // 5 seconds * 1000 ms/sec
+            resetTimer = false;
         }
-    }//fim while
-    setCoordinator(true);
-    resetTimer = true;
+        while (System.currentTimeMillis() < end) {
+            try {
+                // obtem a resposta
+                DatagramPacket message = receiveMessage();
+                int msg = 0;
+                // mostra a resposta
+                String resposta = new String(message.getData(), 0, message.getLength());
+                msg = Integer.parseInt(resposta.split(":")[1]);
+                if (resposta.split(":")[0].equals("Quero ser coordenador")) {
+
+                    System.out.println(resposta + "\nrrecebendo resposta");
+                    if (msg > myId) {
+                        System.out.println("existem alguem maior que eu");
+                        setCoordinator(false);
+                        electionStarted = false;
+                        return;
+                    } else {
+                        sendMessage("Quero ser coordenador:" + myId, message.getAddress(), message.getPort());
+                    }
+
+                }
+
+            } catch (IOException e) {
+                System.out.println("esperando resposta de alguem");
+
+            }
+        } // fim while
+        System.out.println("Eu sou o novo coordenador!");
+        setCoordinator(true);
+        electionStarted = false;
+        resetTimer = true;
     }
 
     static void sendMessage(String message, InetAddress address, int port) throws IOException {
