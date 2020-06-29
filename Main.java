@@ -4,7 +4,7 @@ import java.net.*;
 
 public class Main {
     static long start = System.currentTimeMillis();
-    static long end = start + 25 * 1000; // 25 seconds * 1000 ms/sec
+    static long end = start + 10 * 1000; // 25 seconds * 1000 ms/sec
 
     static boolean isCoordinator = false;
     static boolean resetTimer = false;
@@ -41,15 +41,12 @@ public class Main {
         int maiorID = 0;
         String aux;
 
-        long start = System.currentTimeMillis();
-        long end = start + 25 * 1000; // 25 seconds * 1000 ms/sec
+        start = System.currentTimeMillis();
+        end = start + 10 * 1000; // 25 seconds * 1000 ms/sec
 
-        // recebe a porta passada por parametro java localhost 3000
         myPort = Integer.parseInt(args[1]);
-        // cria um socket datagrama
         socket = new DatagramSocket(myPort);
 
-        // Setup list of nodes accoriding to config.txt
         while ((aux = br.readLine()) != null) {
             String[] info = aux.split(" ");
 
@@ -77,14 +74,7 @@ public class Main {
 
 
         while (true) {
-            // 1 Node is coordinator and only responds
-            // condicao com que faz que o coordenador continue conectado por x tempo
-            if (getCoordinator()) {
-                if (resetTimer) {
-                    start = System.currentTimeMillis();
-                    end = start + 25 * 1000; // 25 seconds * 1000 ms/sec
-                    resetTimer = false;
-                }
+            if (isCoordinator) {
                 while (System.currentTimeMillis() < end) {
                     try {
                         // obtem a resposta
@@ -111,46 +101,26 @@ public class Main {
                 System.exit(0);
             }
 
-            // MARK nao sou o coordenador
             else {
-                // Um coordenador é conhecido
                 if (coordinatorOnline) {
-                    // 2 Node is not coordinator and sends hello to coordinator
+
                     sendMessage("2:Ola coord sou o id -  " + myId, InetAddress.getByName("localhost"), coordinatorPort);
 
                     try {
-                        // 2.1 Coordinator responde
-                        // obtem a resposta
                         DatagramPacket message = receiveMessage();
 
-                        // mostra a resposta
                         String resposta = new String(message.getData(), 0, message.getLength());
-                        System.out.println(resposta);
-
-                        Thread.currentThread();
-                        Thread.sleep(1000);
+                        //System.out.println(resposta);
                     }
-                    // 2.2 Coordinator does not respond
                     catch (IOException e) {
                         System.out.println("6:coordenador caiu, iniciando nova eleicao id " + myId);
                         // nao consegui mandar para o coordenador
                         coordinatorOnline = false;
-                        if (!coordinatorOnline ){
-                            resetTimer = true;
-                            resetTimer(2);
-                        }
-                      
-                    } catch(InterruptedException e){
-                        System.out.println(e);
-                        socket.close();
+                        resetTimer(2);
                     }
 
-                    // COOORDENADOR NÃO É CONHECIDO
                 } else {
-
-                    // Pergunta se tem um coordenador
                     if (!electionStarted && System.currentTimeMillis() < end) {
-
                         for (Node node : nodeList) {
                             if (node.port != myPort) {
                                 sendMessage("1:Coordenador online?", InetAddress.getByName("localhost"), node.port);
@@ -159,20 +129,21 @@ public class Main {
                         }
                     } else if (electionStarted){
                         if (System.currentTimeMillis() < end){
-                            System.out.println("Entrei em election started");
+                            // Election election = new Election();
+                            // election.runElection();
                             sendMessageForBigger("4:Quero ser o coordenador - " + myId, nodeList);
 
                         } else {
-                            System.out.println("Saí de election started");
+                            System.out.println("\nEu sou o novo coordenador");
                             electionStarted = false;
-                            sendMessageForAll("0:Eu sou o novo coordenador id " + myId, nodeList);
+                            sendMessageForAll("0:Novo coordenador escolhido, id = " + myId, nodeList);
                             isCoordinator = true;
                             resetTimer(10);
                         }
                     
                     } else {
                         electionStarted = true;
-                        System.out.println("Comecei eleicao");
+
                         sendMessageForAll("6:Eleição começou", nodeList);
                         resetTimer(5);
                     }
@@ -188,7 +159,6 @@ public class Main {
                             coordinatorPort = message.getPort();
                             electionStarted = false;
                         } else if (messageCode == 4){
-                            System.out.println("Aluem mandou pra mim");
                             int senderID = Integer.parseInt(getMessageContent(resposta).split(" - ")[1]);
                             if (senderID > myId){
                                 System.out.println(senderID + " é maior que meu id " + myId);
@@ -198,11 +168,13 @@ public class Main {
                                 sendMessage("5:Meu id é maior", message.getAddress(), message.getPort());
                             }
                         } else if (messageCode == 5){
-                            System.out.println("Alguém com ID maior respondeu, me retirando da eleição");
+                            System.out.println("\nAlguém com ID maior respondeu, me retirando da eleição");
                                 electionStarted = false;
-                                resetTimer(2);
+                                resetTimer(5);
                         } else if (messageCode == 6){
                             System.out.println(getMessageContent(resposta));
+                            // Election election = new Election();
+                            // election.runElection();
                             electionStarted = true;
                             resetTimer(5);
                         }
@@ -257,7 +229,6 @@ public class Main {
         try {
             socket.setSoTimeout(500);
         } catch (SocketException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
         socket.receive(pacote);
