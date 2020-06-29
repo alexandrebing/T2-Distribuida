@@ -38,11 +38,7 @@ public class Main {
         ArrayList<Node> nodeList = new ArrayList<Node>();
         File file = new File("config.txt");
         BufferedReader br = new BufferedReader(new FileReader(file));
-        int maiorID = 0;
         String aux;
-
-        start = System.currentTimeMillis();
-        end = start + 10 * 1000; // 25 seconds * 1000 ms/sec
 
         myPort = Integer.parseInt(args[1]);
         socket = new DatagramSocket(myPort);
@@ -50,27 +46,49 @@ public class Main {
         while ((aux = br.readLine()) != null) {
             String[] info = aux.split(" ");
 
-            if (Integer.parseInt(info[2]) == myPort)
-                myId = Integer.parseInt(info[0]);
             Node node = new Node(Integer.parseInt(info[0]), Integer.parseInt(info[2]), info[1]);
-
-            if (node.ID > maiorID) {
-                maiorID = node.ID;
-                coordinatorPort = node.port;
+            if (Integer.parseInt(info[2]) == myPort){
+                myId = Integer.parseInt(info[0]);
+                node.setConnected();
             }
+
             nodeList.add(node);
         }
 
-        if (myId == maiorID) {
-            for (Node n : nodeList) {
-                n.coordinator = true;
+        br.close();
+        boolean waitingForNodes = true;
+        System.out.println("Eu sou o processo " + myId);
+        System.out.println("Processo inicializado, aguarde até existirem processos o suficiente para começar");
+
+        while(waitingForNodes){
+            sendMessageForAll("2:Hello from " + myId , nodeList);
+            try{
+                DatagramPacket message = receiveMessage();
+                String messageAddress = message.getAddress().getHostName();
+                int messagePort = message.getPort();
+                String messageContent = new String(message.getData(), 0, message.getLength());
+                int messageCode = Integer.parseInt(messageContent.split(":")[0]);
+                if(messageCode == 0){
+                    waitingForNodes = false;
+                } else {
+                    nodeList = setConnectedNode(messageAddress, messagePort, nodeList);
+                }
+                
+
+            } catch (IOException e){
+                System.out.print(".");
             }
-            System.out.println("sou o coordenador - " + maiorID);
-            resetTimer = false;
-            setCoordinator(true);
+
+            if (getConnectedNodes(nodeList)>4){
+                waitingForNodes = false;
+            }
+
         }
 
-        br.close();
+        System.out.println("\nExecução inicializada!");
+
+        start = System.currentTimeMillis();
+        end = start + 2 * 1000; // 25 seconds * 1000 ms/sec
 
 
         while (true) {
@@ -247,6 +265,26 @@ public class Main {
     static void resetTimer(int seconds){
         start = System.currentTimeMillis();
         end = start + seconds * 1000; // 25 seconds * 1000 ms/sec
+    }
+    
+    static int getConnectedNodes(ArrayList<Node> nodeList){
+        int res = 0;
+        for (Node node : nodeList) {
+            if (node.isConnected){
+                res += 1; 
+            }
+        }
+        return res;
+    }
+
+    static ArrayList<Node> setConnectedNode(String address, int port, ArrayList<Node> nodeList){
+        for (Node node : nodeList) {
+            if (node.port == port && node.address.equals(address)){
+                node.setConnected();
+            }
+        }
+        return nodeList;
+
     }
 
 
