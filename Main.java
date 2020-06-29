@@ -3,9 +3,8 @@ import java.io.*;
 import java.net.*;
 
 public class Main {
-    static long start = System.currentTimeMillis();
-    static long end = start + 10 * 1000; // 25 seconds * 1000 ms/sec
-
+    static long start;
+    static long end;
     static boolean isCoordinator = false;
     static boolean resetTimer = false;
     static boolean electionStarted = false;
@@ -27,7 +26,7 @@ public class Main {
     public static void main(String[] args) throws FileNotFoundException, IOException {
 
         if (args.length != 2) {
-            System.out.println("Use: java Main localhost <PORT>");
+            System.out.println("Use: java Main file ID");
             return;
         }
 
@@ -36,28 +35,42 @@ public class Main {
         electionStarted = false;
 
         ArrayList<Node> nodeList = new ArrayList<Node>();
-        File file = new File("config.txt");
+        File file = new File(args[0]);
         BufferedReader br = new BufferedReader(new FileReader(file));
         String aux;
 
-        myPort = Integer.parseInt(args[1]);
-        socket = new DatagramSocket(myPort);
+        int line = Integer.parseInt(args[1]);
+        int currentLine = 0;
+        myId = Integer.parseInt(args[1]);
+        String myAddress = "";
 
         while ((aux = br.readLine()) != null) {
             String[] info = aux.split(" ");
 
             Node node = new Node(Integer.parseInt(info[0]), Integer.parseInt(info[2]), info[1]);
-            if (Integer.parseInt(info[2]) == myPort){
+            if (currentLine == line-1){
+                System.out.println("currentLine: " + currentLine + " - line: " + (line - 1));
                 myId = Integer.parseInt(info[0]);
+                myPort = Integer.parseInt(info[2]);
+                myAddress = info[1];
                 node.setConnected();
             }
+            currentLine += 1;
 
             nodeList.add(node);
         }
 
+        if (currentLine < line){
+            System.out.println("Configuração não existe. Encerrando a aplicação");
+            System.exit(0);
+
+        }
+
+        socket = new DatagramSocket(myPort);
+
         br.close();
         boolean waitingForNodes = true;
-        System.out.println("Eu sou o processo " + myId);
+        System.out.println("Eu sou o processo " + myId + "\nCorrendo no endereço " + myAddress + ":" + myPort);
         System.out.println("Processo inicializado, aguarde até existirem processos o suficiente para começar");
 
         while(waitingForNodes){
@@ -88,7 +101,7 @@ public class Main {
         System.out.println("\nExecução inicializada!");
 
         start = System.currentTimeMillis();
-        end = start + 2 * 1000; // 25 seconds * 1000 ms/sec
+        end = start + 2 * 1000; // 2 seconds * 1000 ms/sec
 
 
         while (true) {
