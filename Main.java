@@ -9,7 +9,8 @@ public class Main {
     static boolean isCoordinator = false;
     static boolean resetTimer = false;
     static boolean electionStarted = false;
-
+    static boolean coordinatorOnline = false;
+    static boolean flagSafadona = false;
     public static void setCoordinator(boolean isCoordinatorr) {
         isCoordinator = isCoordinatorr;
     }
@@ -29,7 +30,6 @@ public class Main {
 
         int myId = 0;
         int coordinatorPort = 0;
-        boolean coordinatorOnline = false;
         electionStarted = false;
 
         ArrayList<Node> nodeList = new ArrayList<Node>();
@@ -129,8 +129,12 @@ public class Main {
                     catch (IOException e) {
                         System.out.println("coordenador caiu, iniciando nova eleicao");
                         // nao consegui mandar para o coordenador
-                        resetTimer = true;
-                        Election(nodeList, socket, myId, isCoordinator);
+                        coordinatorOnline = false;
+                        if (!coordinatorOnline ){
+                            resetTimer = true;
+                            Election(nodeList, socket, myId, isCoordinator);
+                        }
+                      
                     }
 
                     try {
@@ -216,13 +220,14 @@ public class Main {
                 // mostra a resposta
                 String resposta = new String(message.getData(), 0, message.getLength());
                 msg = Integer.parseInt(resposta.split(":")[1]);
-                if (resposta.split(":")[0].equals("Quero ser coordenador")) {
+                if (resposta.split(":")[0].contains("Quero ser coordenador")) {
 
                     System.out.println(resposta + "\nrrecebendo resposta");
                     if (msg > myId) {
                         System.out.println("existem alguem maior que eu");
                         setCoordinator(false);
                         electionStarted = false;
+                        flagSafadona = true;
                         return;
                     } else {
                         sendMessage("Quero ser coordenador:" + myId, message.getAddress(), message.getPort());
@@ -232,13 +237,25 @@ public class Main {
 
             } catch (IOException e) {
                 System.out.println("esperando resposta de alguem");
+                
 
             }
         } // fim while
-        System.out.println("Eu sou o novo coordenador!");
-        setCoordinator(true);
-        electionStarted = false;
-        resetTimer = true;
+        if (!flagSafadona){
+            System.out.println("Eu sou o novo coordenador!");
+            setCoordinator(true);
+            electionStarted = false;
+            resetTimer = true;
+            return;
+        }else{
+            System.out.println("entrei");
+            coordinatorOnline = true;
+            flagSafadona = false;
+            return;
+        }
+       
+        
+       
     }
 
     static void sendMessage(String message, InetAddress address, int port) throws IOException {
