@@ -9,10 +9,10 @@ public class Main {
     static boolean resetTimer = false;
     static boolean electionStarted = false;
     static boolean coordinatorOnline = false;
-    static boolean flagSafadona = false;
     static int myPort;
     static int myId;
     static int coordinatorPort;
+    static String lastCoord = "-1";
     public static void setCoordinator(boolean isCoordinatorr) {
         isCoordinator = isCoordinatorr;
     }
@@ -116,6 +116,7 @@ public class Main {
                         int messageCode = getMessageCode(resposta);
                         if (messageCode == 1) {
                             sendMessage("0:Coordenador id " + myId, message.getAddress(), message.getPort());
+                            lastCoord = Integer.toString(myId);
                         } else if (messageCode == 2) {
                             //System.out.println(getMessageContent(resposta));
                             sendMessage("3:Coordinator aqui - myId:" + myId, message.getAddress(), message.getPort());
@@ -141,10 +142,16 @@ public class Main {
                         DatagramPacket message = receiveMessage();
 
                         String resposta = new String(message.getData(), 0, message.getLength());
-                        //System.out.println(resposta);
+                        String aux2 = resposta.substring(resposta.length()-1);
+                         lastCoord = aux2;
+                        
+                       
+                     
+
+                        
                     }
                     catch (IOException e) {
-                        System.out.println("6:coordenador caiu, iniciando nova eleicao id " + myId);
+                        System.out.println("6:coordenador"+lastCoord+" caiu, iniciando nova eleicao id " + myId);
                         // nao consegui mandar para o coordenador
                         coordinatorOnline = false;
                         resetTimer(2);
@@ -165,7 +172,7 @@ public class Main {
                             sendMessageForBigger("4:Quero ser o coordenador - " + myId, nodeList);
 
                         } else {
-                            System.out.println("\nEu sou o novo coordenador");
+                            System.out.println("\nEu sou o novo coordenador| "+ myId);
                             electionStarted = false;
                             sendMessageForAll("0:Novo coordenador escolhido, id = " + myId, nodeList);
                             isCoordinator = true;
