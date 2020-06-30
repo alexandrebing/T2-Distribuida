@@ -101,7 +101,7 @@ public class Main {
         System.out.println("\nExecução inicializada!");
 
         start = System.currentTimeMillis();
-        end = start + 2 * 1000; // 2 seconds * 1000 ms/sec
+        end = start + 3 * 1000; // 2 seconds * 1000 ms/sec
 
 
         while (true) {
@@ -154,7 +154,7 @@ public class Main {
                         System.out.println("6:coordenador"+lastCoord+" caiu, iniciando nova eleicao id " + myId);
                         // nao consegui mandar para o coordenador
                         coordinatorOnline = false;
-                        resetTimer(2);
+                        resetTimer(3);
                     }
 
                 } else {
@@ -183,7 +183,7 @@ public class Main {
                         electionStarted = true;
 
                         sendMessageForAll("6:Eleição começou", nodeList);
-                        resetTimer(5);
+                        resetTimer(7);
                     }
 
                     try{
@@ -201,7 +201,7 @@ public class Main {
                             if (senderID > myId){
                                 System.out.println(senderID + " é maior que meu id " + myId);
                                 electionStarted = false;
-                                resetTimer(2);
+                                resetTimer(3);
                             } else {
                                 sendMessage("5:Meu id é maior", message.getAddress(), message.getPort());
                             }
